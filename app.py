@@ -18,7 +18,11 @@ Functions:
 
 # %% ---- 2023-12-09 ------------------------
 # Requirements and constants
-from util.on_screen_display import onScreenDisplay
+import time
+
+from threading import Thread
+from util.on_screen_display import OnScreenDisplay
+from util.mouse_keyboard_watcher import MouseKeyboardWatcher
 
 
 # %% ---- 2023-12-09 ------------------------
@@ -28,7 +32,26 @@ from util.on_screen_display import onScreenDisplay
 # %% ---- 2023-12-09 ------------------------
 # Play ground
 if __name__ == '__main__':
-    osd = onScreenDisplay()
+    mkw = MouseKeyboardWatcher()
+    osd = OnScreenDisplay()
+
+    Thread(target=mkw.loop, daemon=True).start()
+    Thread(target=osd.loop, daemon=True).start()
+
+    def loop():
+        interval = 1/30
+
+        while True:
+            x, y = mkw.xy
+            evt = mkw.get_event()
+            osd.update_content(dict(h1=f'{x}, {y}', p=f'|{evt}|'))
+
+            time.sleep(interval)
+
+    Thread(target=loop, daemon=True).start()
+
+    input('Enter to escape.')
+    mkw.running = False
 
 
 # %% ---- 2023-12-09 ------------------------
