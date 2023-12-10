@@ -37,7 +37,7 @@ from . import LOGGER
 # %% ---- 2023-12-09 ------------------------
 # Function and class
 def rnd_color():
-    return tuple([random.randint(100, 255) for _ in ['r', 'g', 'b']])
+    return tuple(random.randint(100, 255) for _ in ['r', 'g', 'b'])
 
 
 def now_str():
@@ -55,15 +55,17 @@ class OnScreenDisplay(object):
     width = 600
     height = 400
     transparency_background = (0, 0, 0)
-    fps = 30
+    framerate = 20
 
     clock = pg.time.Clock()
 
     content = dict(
         h1='h1',
         p='p1\np2',
-        time='time'
+        time='time',
+        mouse_pos=(0, 0)
     )
+
     content_options = dict(
         default=dict(
             font=pg.font.Font(None, 45),
@@ -95,6 +97,9 @@ class OnScreenDisplay(object):
 
         screen_rect = screen.get_rect()
 
+        rect1 = pg.Rect(screen_rect.width-400,
+                        screen_rect.height-300, 400, 200)
+
         self.running = True
         LOGGER.debug('Starts displaying loop')
         while self.running:
@@ -105,29 +110,42 @@ class OnScreenDisplay(object):
 
             screen.fill(self.transparency_background)
 
+            # ----------------------------------------
+            # Render rect1
             # Render h1
             txt = self._mk_txt('h1')
-            screen.blit(txt, txt.get_rect(center=(300, 100)))
+            screen.blit(txt, txt.get_rect(center=rect1.midtop))
 
             # Render p
             txt = self._mk_txt('p')
-            screen.blit(txt, txt.get_rect(center=screen_rect.center))
+            screen.blit(txt, txt.get_rect(center=rect1.center))
 
             # Render time
             txt = self._mk_txt('time')
-            screen.blit(txt, txt.get_rect(center=(300, 300)))
+            screen.blit(txt, txt.get_rect(center=rect1.midbottom))
 
-            # Fresh
+            # ----------------------------------------
+            pg.draw.rect(
+                screen,
+                (255, 0, 0),
+                pg.Rect([e-50 for e in self.content['mouse_pos']], (100, 100)),
+                2,
+                1)
+
+            # ----------------------------------------
+            # Refresh
             pg.display.flip()
-            self.clock.tick(self.fps)
+            self.clock.tick(self.framerate)
 
         LOGGER.debug('Stopped displaying loop')
 
-    def update_content(self, mapping: dict = {}):
+    def update_content(self, mapping: dict = None):
+        if mapping is None:
+            mapping = {}
         self.content.update(mapping)
 
     def _mk_txt(self, name: str):
-        if not name in self.content:
+        if name not in self.content:
             LOGGER.error(f'Invalid content name: {name}.')
             return
 
@@ -140,9 +158,10 @@ class OnScreenDisplay(object):
             LOGGER.warning(
                 f'Invalid content option name: {name}, using default instead.')
 
-        txt = option['font'].render(txt, True, option['color'])
+        return option['font'].render(txt, True, option['color'])
 
-        return txt
+    def quit(self):
+        pg.quit()
 
     def _init_screen(self):
         info = pg.display.Info()
@@ -153,20 +172,22 @@ class OnScreenDisplay(object):
         y = info.current_h - self.height
         os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (x, y)
 
-        screen = pg.display.set_mode((self.width, self.height), 32, pg.NOFRAME)
+        # screen = pg.display.set_mode((self.width, self.height), pg.NOFRAME, 32)
+        screen = pg.display.set_mode((0, 0), pg.FULLSCREEN | pg.NOFRAME, 8)
 
         # Create layered window
         hwnd = pg.display.get_wm_info()["window"]
-        win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE,
-                               win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE) | win32con.WS_EX_LAYERED)
+        l_ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+        l_ex_style |= win32con.WS_EX_TRANSPARENT | win32con.WS_EX_LAYERED
+        win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, l_ex_style)
 
         # Always on top
-        win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0,
-                              0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+        win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0,
+                              win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
 
         # Set window transparency color
-        win32gui.SetLayeredWindowAttributes(
-            hwnd, win32api.RGB(*self.transparency_background), 0, win32con.LWA_COLORKEY)
+        win32gui.SetLayeredWindowAttributes(hwnd,
+                                            win32api.RGB(*self.transparency_background), 0, win32con.LWA_COLORKEY)
 
         self.screen = screen
         LOGGER.debug(f'Initialized screen: {screen}')

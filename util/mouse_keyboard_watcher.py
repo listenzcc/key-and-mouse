@@ -35,7 +35,8 @@ class MouseKeyboardWatcher(object):
     events = []
     events_limit = 1e6
     xy = (0, 0)
-    interval = 1/30  # Hz
+    framerate = 20  # Hz
+    interval = 1/framerate  # Seconds
     tic = time.time()
 
     def __init__(self):
@@ -67,20 +68,6 @@ class MouseKeyboardWatcher(object):
 
         return ','.join(evt)
 
-        if len(self.events) > 0:
-            e = self.events[-1]
-
-            evt = '--'
-
-            if e[0] == 'key':
-                evt = f'Keyboard: {e[1].name}'
-
-            if e[0] == 'button':
-                evt = f'Mouse: {e[1].button[0].upper()}'
-
-            return evt
-        return
-
     def _safe_events(self):
         if len(self.events) > self.events_limit:
             self.events = self.events[:int(1e5)]
@@ -95,12 +82,14 @@ class MouseKeyboardWatcher(object):
             self.events.append(('key', event, t, self.xy))
 
     def on_mouse_event(self, event: mouse.MoveEvent, record_flag: bool = True):
-        # Update mouse position in realtime
         if isinstance(event, mouse.MoveEvent):
+            # Update mouse position in realtime
             self.xy = (event.x, event.y)
-        else:
-            if event.event_type != 'down':
-                return
+            return
+
+        if event.event_type != 'down':
+            # Only record mouse key down event
+            return
 
         # Record mouse-movement event
         # self.events.append(('mouse', event, t, self.xy))

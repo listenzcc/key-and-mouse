@@ -44,7 +44,8 @@ if __name__ == '__main__':
         while True:
             x, y = mkw.xy
             evt = mkw.get_event()
-            osd.update_content(dict(h1=f'{x}, {y}', p=f'|{evt}|'))
+            osd.update_content(
+                dict(h1=f'{x}, {y}', p=f'|{evt}|', mouse_pos=(x, y)))
 
             time.sleep(interval)
 
@@ -52,6 +53,7 @@ if __name__ == '__main__':
 
     input('Enter to escape.')
     mkw.running = False
+    osd.quit()
 
 
 # %% ---- 2023-12-09 ------------------------
